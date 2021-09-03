@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text;
 using Discord;
+using Discord.WebSocket;
 using Discord.Commands;
 
 namespace TerminPlannerBOT.Commands
@@ -11,17 +12,15 @@ namespace TerminPlannerBOT.Commands
     public class OptionalTerminAddArguments
     {
         public string Description { get; set; }
-        public uint RepatsDays { get; set; }
     }
 
     [NamedArgumentType]
     public class OptionalTerminModifyArguments
     {
         public string Name { get; set; }
+        public string Description { get; set; }
         public string Date { get; set; }
         public string Time { get; set; }
-        public string Description { get; set; }
-        public uint RepatsDays { get; set; }
     }
 
     [Group("termin")]
@@ -41,9 +40,9 @@ namespace TerminPlannerBOT.Commands
         private void GetTerminField(EmbedBuilder embedBuilder, Termin termin)
         {
             
-            string fieldContent = $"**ID:** {termin.Id}\n**Description:** {termin.Description ?? "No Termin Description available"}\n" +
-                $"**Date:** {termin.Date.ToString("dd.MM.yyyy")}\n**Time:** {termin.Date.ToString("HH:mm")}";
-            embedBuilder.AddField($"**{termin.Name}**", fieldContent);
+            string fieldContent = $">>> **Description:** `{termin.Description ?? "No termin description available."}`\n" +
+                $"**Date:** `{termin.Date.ToString("dd.MM.yyyy")}`\n**Time:** `{termin.Date.ToString("HH:mm")}`";
+            embedBuilder.AddField($":calendar_spiral:  `{termin.Id}`  **{termin.Name}**", fieldContent);
         }
         
         [Command("list")]
@@ -73,7 +72,7 @@ namespace TerminPlannerBOT.Commands
             termin.Name = name;
             if(!termin.ConvertToDateTime(date, time))
             {
-                ReplyAsync(embed: Program.BuildSimpleEmbed("Error", "Invalid date or time format."));
+                ReplyAsync(embed: Program.BuildSimpleEmbed(":x: Error", "Invalid date or time format."));
                 return Task.CompletedTask;
             }
 
@@ -90,6 +89,7 @@ namespace TerminPlannerBOT.Commands
             GetTerminField(embed, termin);
 
             ReplyAsync(embed: embed.Build());
+            termin.UpdateTerminQuery(_server, Context.Channel as SocketTextChannel);
             return Task.CompletedTask;
         }
 
@@ -106,18 +106,23 @@ namespace TerminPlannerBOT.Commands
             }
 
             termin.Name = namedArgs.Name ?? termin.Name;
-            if (!termin.ConvertToDateTime(namedArgs.Date, namedArgs.Time))
-            {
-                replyMessageText = "Incorrect date or time format!";
-            }
-            
             termin.Description = namedArgs.Description ?? termin.Description;
 
+            if (!String.IsNullOrEmpty(namedArgs.Date) || !String.IsNullOrEmpty(namedArgs.Time))
+            {
+                if (!termin.ConvertToDateTime(namedArgs.Date, namedArgs.Time))
+                {
+                    replyMessageText = "Incorrect date or time format!";
+                }
+            }
+
             ServerHandler.SaveServer(_server);
+
             EmbedBuilder embed = new EmbedBuilder();
             embed.Color = Program.defaultColor;
             GetTerminField(embed, termin);
             ReplyAsync(replyMessageText, embed: embed.Build());
+            termin.UpdateTerminQuery(_server, Context.Channel as SocketTextChannel);
             return Task.CompletedTask;
         }
 
@@ -126,7 +131,7 @@ namespace TerminPlannerBOT.Commands
         public Task RemoveTermin(int terminId)
         {
 
-            if(_server.removeTermin(terminId))
+            if(_server.RemoveTermin(terminId))
             {
                 ServerHandler.SaveServer(_server);
                 ReplyAsync($"Deleted termin with id **{terminId}**");

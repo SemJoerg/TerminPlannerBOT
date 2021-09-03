@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Discord.WebSocket;
 
 namespace TerminPlannerBOT
 {
@@ -21,12 +22,15 @@ namespace TerminPlannerBOT
 
         public char Prefix { get; set; }
 
+        public ulong terminChannelId;
+
         public List<Termin> Termins { get; set; }
 
         public Server()
         {
             Prefix = Program.defaultPrefix;
             Termins = new List<Termin>();
+            
         }
 
         //returns false when termin must be inserted
@@ -94,7 +98,7 @@ namespace TerminPlannerBOT
             return false;
         }
         
-        public bool removeTermin(int id)
+        public bool RemoveTermin(int id)
         {
             for(int index = 0; index < Termins.Count; index++)
             {
@@ -106,6 +110,16 @@ namespace TerminPlannerBOT
             }
 
             return false;
+        }
+
+        public SocketTextChannel GetTerminChannel()
+        {
+            return Program._client.GetChannel(terminChannelId) as SocketTextChannel;
+        }
+        
+        public void SetTerminChannel(SocketTextChannel channel)
+        {
+            terminChannelId = channel.Id;
         }
     }
 }

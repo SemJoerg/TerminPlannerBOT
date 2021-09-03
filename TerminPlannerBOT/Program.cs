@@ -2,6 +2,7 @@
 using System.Xml;
 using System.Threading.Tasks;
 using Discord;
+using System.IO;
 using Discord.WebSocket;
 
 namespace TerminPlannerBOT
@@ -14,10 +15,10 @@ namespace TerminPlannerBOT
         Discord.Commands.CommandServiceConfig commandConfig;
 
         public CommandHandler commandHandler;
-        DiscordSocketClient _client;
+        static public DiscordSocketClient _client;
         public string token;
-        public static char defaultPrefix;
-        public static Color defaultColor = Color.DarkRed;
+        static public char defaultPrefix;
+        static public Color defaultColor = Color.DarkRed;
         public string savePath;
 
         public async Task MainAsync()
@@ -40,13 +41,24 @@ namespace TerminPlannerBOT
 
             _client = new DiscordSocketClient(clientConfig);
             _client.Log += Log;
+            _client.ReactionAdded += Termin.AddedReaction;
+            _client.ReactionRemoved += Termin.RemovedReaction;
+            _client.MessageUpdated += Termin.MessageUpdated;
             commandHandler = new CommandHandler(_client, new Discord.Commands.CommandService(commandConfig));
 
             
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
             await commandHandler.InstallCommandsAsync();
+
+            while (_client.ConnectionState != ConnectionState.Connected) //Waits for the Client to connect
+            {
+                await Task.Delay(100);
+            }
+
+            UpdateAllTerminMessages();
             SetStatus();
+
             await Task.Delay(-1);
         }
 
@@ -58,12 +70,20 @@ namespace TerminPlannerBOT
 
         private async Task SetStatus()
         {
-            while (_client.ConnectionState != ConnectionState.Connected)
-            {
-                await Task.Delay(1000);
-            }
-            await _client.SetGameAsync($"forgot prefix? type: @{_client.CurrentUser.Username} info");
+            _client.SetGameAsync($"@{_client.CurrentUser.Username} info");
             Log("Set Bot Status");
+        }
+
+        private void UpdateAllTerminMessages()//Updates Terminmessages
+        {
+            foreach (SocketGuild guild in _client.Guilds)
+            {
+                Server server = ServerHandler.LoadServer(guild.Id);
+                foreach (Termin termin in server.Termins)
+                {
+                    termin.UpdateTerminQuery(server, server.GetTerminChannel() );
+                }
+            }
         }
 
         private bool LoadConfig(ref string _token, ref string _savePath)
@@ -118,17 +138,20 @@ namespace TerminPlannerBOT
             Console.ResetColor();
         }
 
-        static public Embed BuildSimpleEmbed(string heading, string description = null, string foot = null)
+        static public Embed BuildSimpleEmbed(string title, string heading = "\u200B", string description = "\u200B", string foot = null)
         {
             EmbedBuilder embedBuilder = new EmbedBuilder();
             embedBuilder.Color = Program.defaultColor;
+            embedBuilder.Title = title;
             if (!String.IsNullOrEmpty(foot))
-                embedBuilder.WithFooter(foot, "https://www.google.com/");
+                embedBuilder.WithFooter(foot);
 
-            embedBuilder.AddField(heading, description);
+            if(heading != "\u200B" || description != "\u200B") 
+                embedBuilder.AddField(heading, description);
 
             return embedBuilder.Build();
         }
+
     }
 
 }

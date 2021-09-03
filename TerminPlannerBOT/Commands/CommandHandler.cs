@@ -32,7 +32,15 @@ namespace TerminPlannerBOT
             {
                 EmbedBuilder embed = new EmbedBuilder();
                 embed.Color = Color.DarkRed;
-                embed.AddField($"Prefix: ", $"**{server.Prefix}**");
+                SocketTextChannel terminChannel = server.GetTerminChannel();
+                string terminChannelName;
+                if (terminChannel != null)
+                    terminChannelName = terminChannel.Name;
+                else
+                    terminChannelName = "None";
+
+                embed.AddField($"**Guild Info**", $"**Prefix:** `{server.Prefix}`\n**Termin channel:** `{terminChannelName}`");
+                embed.AddField($"**Bot Info**", $"**Name:** `{_client.CurrentUser.ToString()}`\n**Website: **");
                 message.Channel.SendMessageAsync(embed: embed.Build());
                 return true;
             }
@@ -54,11 +62,12 @@ namespace TerminPlannerBOT
             if (!string.IsNullOrEmpty(result?.ErrorReason))
             {
                 string errorMessage = result.ErrorReason;
+                string fieldContent = "\u200B";
                 if (errorMessage == "Unknown command.")
-                    errorMessage += $"\nType **{server.Prefix}help** for a list of commands";
-                context.Channel.SendMessageAsync(embed: Program.BuildSimpleEmbed("Error", errorMessage));
+                    fieldContent += $"\nType **{server.Prefix}help** for a list of commands";
+                context.Channel.SendMessageAsync(embed: Program.BuildSimpleEmbed(":x: **Error**", errorMessage, fieldContent));
             }
-
+            
             return Task.CompletedTask;
         }
 
