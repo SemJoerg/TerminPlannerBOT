@@ -153,7 +153,7 @@ namespace TerminPlannerBOT.Commands
                 termin.RemoveReactions();
                 termin.UpdateTerminQuery(_server, Context.Channel as SocketTextChannel);
                 ServerHandler.SaveServer(_server);
-                ReplyAsync(embed: Program.BuildSimpleEmbed($"Reset termin with id **{terminId}**"));
+                ReplyAsync(embed: Program.BuildSimpleEmbed($"Reset termin with id `{terminId}`"));
             }
             else
             {
