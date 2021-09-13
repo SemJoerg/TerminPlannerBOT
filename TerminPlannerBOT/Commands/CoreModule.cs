@@ -84,7 +84,7 @@ namespace TerminPlannerBOT.Commands
         }
 
         [Command("set termin channel")]
-        [Summary("<id>|Sets the channel where the termin will occour")]
+        [Summary("<id>|Sets the channel where the termins will occour")]
         public Task SetTerminChannel(ulong id)
         {
             SocketTextChannel channel = _client.GetChannel(id) as SocketTextChannel;
@@ -100,7 +100,7 @@ namespace TerminPlannerBOT.Commands
         }
 
         [Command("set termin channel")]
-        [Summary("Sets the (current)channel where the termin will occour")]
+        [Summary("Sets the (current)channel where the termins will occour")]
         public Task SetTerminChannel()
         {
             SetTerminChannel(Context.Channel as SocketTextChannel);

@@ -64,7 +64,7 @@ namespace TerminPlannerBOT.Commands
         }
 
         [Command("add")]
-        [Summary("<name> <date&time> [__Optional Parameter__]|*description: <description>*\n\nAdds a termin")]
+        [Summary("<name> <date&time> [__optional parameter__]|*description: <description>*\n\nAdds a termin")]
         public Task AddTermin(string name, string date, string time, OptionalTerminAddArguments namedArgs = null)
         {   
             Termin termin = new Termin();
@@ -94,7 +94,7 @@ namespace TerminPlannerBOT.Commands
         }
 
         [Command("modify")]
-        [Summary("<id> [__Optional Parameter__]|*name: <name>\ndescription: <description>\ndateandtime: <date&time>*\n\nModifys a existing termin")]
+        [Summary("<id> [__optional parameter__]|*name: <name>\ndescription: <description>\ndateandtime: <date&time>*\n\nModifys a existing termin")]
         public Task ModifyTermin(int id, OptionalTerminModifyArguments namedArgs)
         {
             string replyMessageText = null;
