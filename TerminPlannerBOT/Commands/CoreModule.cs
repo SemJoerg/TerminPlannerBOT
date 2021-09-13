@@ -60,7 +60,7 @@ namespace TerminPlannerBOT.Commands
 
                 embedOutput.AddField(commandHeadder, commandSummary);
             }
-
+            embedOutput.AddField("\u200B", $"*For more information visit [{Program.websiteLinkName}]({Program.websiteUrl})*");
             ReplyAsync(embed: embedOutput.Build());
 
             return Task.CompletedTask;

@@ -30,18 +30,16 @@ namespace TerminPlannerBOT
         public string Description { get; set; }
         public DateTime Date { get; set; }
 
-        static private Emoji acceptEmoji;
-        static private Emoji declinedEmoji;
+        static private Emoji acceptEmoji = new Emoji("✅");
+        static private Emoji declinedEmoji = new Emoji("❌");
 
-        public List<SocketUser> AcceptedUserList { get; set; }
-        public List<SocketUser> DeclinedUserList { get; set; }
+        public List<string> AcceptedUserList { get; set; }
+        public List<string> DeclinedUserList { get; set; }
 
         public Termin()
         {
-            AcceptedUserList = new List<SocketUser>();
-            DeclinedUserList = new List<SocketUser>();
-            acceptEmoji = new Emoji("✅");
-            declinedEmoji = new Emoji("❌");
+            AcceptedUserList = new List<string>();
+            DeclinedUserList = new List<string>();
         }
         
         public bool ConvertToDateTime(string date, string time)
@@ -70,25 +68,25 @@ namespace TerminPlannerBOT
             return false;
         }
         
-        private Embed getTerminMessage()
+        private Embed GetTerminMessageContent()
         {
             EmbedBuilder embedBuilder = new EmbedBuilder();
             embedBuilder.Color = Program.defaultColor;
             embedBuilder.Title = $":calendar_spiral: `{Id}` {Name}";
-            embedBuilder.AddField($"{Description ?? "No description Available"}", "\u200B");
+            embedBuilder.AddField($"{Description ?? "No description Available"}", $"__**Date:**__ {Date.ToShortDateString()}\n__**Time:**__ {Date.ToShortTimeString()}");
             string acceptedUsers = "\u200B";
             string declinedUsers = "\u200B";
 
 
             
-            foreach(SocketUser user in AcceptedUserList)
+            foreach(string user in AcceptedUserList)
             {
-                acceptedUsers += user.ToString() + "\n";
+                acceptedUsers += user + "\n";
             }
             
-            foreach(SocketUser user in DeclinedUserList)
+            foreach(string user in DeclinedUserList)
             {
-                declinedUsers += user.ToString() + "\n";
+                declinedUsers += user + "\n";
             }
 
             embedBuilder.AddField("__Accepted__", acceptedUsers, true);
@@ -97,23 +95,29 @@ namespace TerminPlannerBOT
             return embedBuilder.Build();
         }
         
+        private async Task<IUserMessage> GetTerminMessage()
+        {
+            ISocketMessageChannel messageChannel = Program._client.GetChannel(MessageChannelId) as ISocketMessageChannel;
+            IUserMessage message = await messageChannel.GetMessageAsync(MessageId, CacheMode.AllowDownload, new RequestOptions() { RetryMode = RetryMode.RetryRatelimit }) as IUserMessage;
+            return message;
+        }
+
         public async void UpdateTerminQuery(Server server, SocketTextChannel secondaryChannel)
         {
             try
             {
-                ISocketMessageChannel messageChannel = Program._client.GetChannel(MessageChannelId) as ISocketMessageChannel;
-                IUserMessage message = await messageChannel.GetMessageAsync(MessageId, CacheMode.AllowDownload) as IUserMessage;
+                IUserMessage message = await GetTerminMessage();
                 
                 if(message.Embeds.Count != 0)
                 {
-                    message.ModifyAsync(msg => msg.Embed = Optional.Create<Embed>(getTerminMessage()));
+                    message.ModifyAsync(msg => msg.Embed = Optional.Create<Embed>(GetTerminMessageContent()));
                     
                 }
                 else
                 {
                     Program.Log(message.IsSuppressed.ToString());
                     message.ModifySuppressionAsync(false);
-                    message.ModifyAsync(msg => msg.Embed = Optional.Create<Embed>(getTerminMessage()));
+                    message.ModifyAsync(msg => msg.Embed = Optional.Create<Embed>(GetTerminMessageContent()));
                 }
                 
                 return;
@@ -123,17 +127,16 @@ namespace TerminPlannerBOT
                 Program.Log(ex);
             }
 
-            AcceptedUserList = new List<SocketUser>();
-            DeclinedUserList = new List<SocketUser>();
+            AcceptedUserList = new List<string>();
+            DeclinedUserList = new List<string>();
             Discord.Rest.RestUserMessage restMessage;
             SocketTextChannel primaryChannel = server.GetTerminChannel();
             if (primaryChannel != null)
-                restMessage = await primaryChannel.SendMessageAsync(embed: getTerminMessage());
+                restMessage = await primaryChannel.SendMessageAsync(embed: GetTerminMessageContent());
             else if (secondaryChannel != null)
-                restMessage = await secondaryChannel.SendMessageAsync(embed: getTerminMessage());
+                restMessage = await secondaryChannel.SendMessageAsync(embed: GetTerminMessageContent());
             else
                 return;
-
             restMessage.AddReactionAsync(acceptEmoji, new RequestOptions());
             restMessage.AddReactionAsync(declinedEmoji, new RequestOptions());
 
@@ -173,59 +176,79 @@ namespace TerminPlannerBOT
             return null;
         }
 
-        static public Task AddedReaction(Cacheable<IUserMessage, ulong> cacheableMessage, ISocketMessageChannel channel, SocketReaction reaction)
+        static async public Task AddedReaction(Cacheable<IUserMessage, ulong> cacheableMessage, ISocketMessageChannel channel, SocketReaction reaction)
         {
             Server server;
             Termin termin = GetTerminOfReaction(cacheableMessage, channel, out server);
-            SocketUser user = Program._client.GetUser(reaction.UserId);
+            Discord.Rest.RestUser user = await Program.restClient.GetUserAsync(reaction.UserId);
 
             if (termin == null || user == null || user.Id == Program._client.CurrentUser.Id)
-                return Task.CompletedTask;
+                return;
             
             if (reaction.Emote.Name == acceptEmoji.Name)
             {
-                termin.AcceptedUserList.Add(user);
+                foreach(string userName in termin.AcceptedUserList)
+                {
+                    if (userName == user.ToString())
+                        return;
+                }
+                termin.AcceptedUserList.Add(user.ToString());
             }
             else if (reaction.Emote.Name == declinedEmoji.Name)
             {
-                termin.DeclinedUserList.Add(user);
+                foreach (string userName in termin.DeclinedUserList)
+                {
+                    if (userName == user.ToString())
+                        return;
+                }
+                termin.DeclinedUserList.Add(user.ToString());
             }
             else
             {
-                return Task.CompletedTask;
+                return;
             }
 
             termin.UpdateTerminQuery(server, channel as SocketTextChannel);
             ServerHandler.SaveServer(server);
-            return Task.CompletedTask;
+            return;
         }
         
-        static public Task RemovedReaction(Cacheable<IUserMessage, ulong> cacheableMessage, ISocketMessageChannel channel, SocketReaction reaction)
+        static async public Task RemovedReaction(Cacheable<IUserMessage, ulong> cacheableMessage, ISocketMessageChannel channel, SocketReaction reaction)
         {
             Server server;
             Termin termin = GetTerminOfReaction(cacheableMessage, channel, out server);
-            SocketUser user = Program._client.GetUser(reaction.UserId);
+            string userName = (await Program.restClient.GetUserAsync(reaction.UserId)).ToString();
+            
 
-            if (termin == null || user == null)
-                return Task.CompletedTask;
-
+            if (termin == null || string.IsNullOrEmpty(userName))
+                return;
 
             if (reaction.Emote.Name == acceptEmoji.Name)
             {
-                termin.AcceptedUserList.Remove(user);
+                termin.AcceptedUserList.Remove(userName);
             }
             else if (reaction.Emote.Name == declinedEmoji.Name)
             {
-                termin.DeclinedUserList.Remove(user);
+                termin.DeclinedUserList.Remove(userName);
             }
             else
             {
-                return Task.CompletedTask;
+                return;
             }
 
             termin.UpdateTerminQuery(server, channel as SocketTextChannel);
             ServerHandler.SaveServer(server);
-            return Task.CompletedTask;
+            return;
+        }
+
+        public async Task RemoveReactions()
+        {
+            AcceptedUserList = new List<string>();
+            DeclinedUserList = new List<string>();
+            IUserMessage message = await GetTerminMessage();
+            await message.RemoveAllReactionsAsync();
+            await message.AddReactionAsync(acceptEmoji, new RequestOptions());
+            await message.AddReactionAsync(declinedEmoji, new RequestOptions());
         }
     }
 }

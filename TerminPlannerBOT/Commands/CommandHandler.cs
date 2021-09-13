@@ -40,7 +40,7 @@ namespace TerminPlannerBOT
                     terminChannelName = "None";
 
                 embed.AddField($"**Guild Info**", $"**Prefix:** `{server.Prefix}`\n**Termin channel:** `{terminChannelName}`");
-                embed.AddField($"**Bot Info**", $"**Name:** `{_client.CurrentUser.ToString()}`\n**Website: **");
+                embed.AddField($"**Bot Info**", $"**Name:** `{_client.CurrentUser.ToString()}`\n**Website: ** [{Program.websiteLinkName}]({Program.websiteUrl})");
                 message.Channel.SendMessageAsync(embed: embed.Build());
                 return true;
             }

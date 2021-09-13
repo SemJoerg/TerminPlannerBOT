@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Discord;
 using System.IO;
 using Discord.WebSocket;
+using Discord.Rest;
 
 namespace TerminPlannerBOT
 {
@@ -16,14 +17,18 @@ namespace TerminPlannerBOT
 
         public CommandHandler commandHandler;
         static public DiscordSocketClient _client;
+        static public DiscordRestClient restClient;
+
         public string token;
         static public char defaultPrefix;
         static public Color defaultColor = Color.DarkRed;
         public string savePath;
+        static public string websiteLinkName;
+        static public string websiteUrl;
 
         public async Task MainAsync()
         {
-            if (!LoadConfig(ref token, ref savePath))
+            if (!LoadConfig(ref token, ref savePath, ref websiteLinkName, ref websiteUrl))
             {
                 Console.WriteLine("\nPress any Key to exit");
                 Console.ReadKey();
@@ -46,7 +51,9 @@ namespace TerminPlannerBOT
             _client.MessageUpdated += Termin.MessageUpdated;
             commandHandler = new CommandHandler(_client, new Discord.Commands.CommandService(commandConfig));
 
-            
+            restClient = new DiscordRestClient();
+            await restClient.LoginAsync(TokenType.Bot, token);
+
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
             await commandHandler.InstallCommandsAsync();
@@ -86,7 +93,7 @@ namespace TerminPlannerBOT
             }
         }
 
-        private bool LoadConfig(ref string _token, ref string _savePath)
+        private bool LoadConfig(ref string _token, ref string _savePath, ref string _websiteLinkName, ref string _websiteUrl)
         {
             try
             {
@@ -94,14 +101,17 @@ namespace TerminPlannerBOT
                 string filePath = AppContext.BaseDirectory + "config.xml";
                 configFile.Load(filePath);
 
+                //token
                 XmlNodeList tokenList = configFile.GetElementsByTagName("token");
                 _token = tokenList.Item(0).InnerText;
                 Log($"Set Token: {_token}");
 
+                //default Prefix
                 XmlNodeList prefixList = configFile.GetElementsByTagName("defaultPrefix");
                 defaultPrefix = Convert.ToChar(prefixList.Item(0).InnerText);
                 Log($"Default-Prefix: {defaultPrefix}");
 
+                //save Path
                 _savePath = "";
                 XmlAttributeCollection savePathAttributes = configFile.GetElementsByTagName("savePath").Item(0).Attributes;
                 if (savePathAttributes.GetNamedItem("relativePath").InnerText == "true")
@@ -112,6 +122,11 @@ namespace TerminPlannerBOT
                 _savePath += savePathAttributes.GetNamedItem("path").InnerText;
                 Log($"Save-Path: {_savePath}");
 
+
+                //Website
+                XmlAttributeCollection websiteAttributes = configFile.GetElementsByTagName("website").Item(0).Attributes;
+                _websiteLinkName = websiteAttributes.GetNamedItem("name").InnerText;
+                _websiteUrl = websiteAttributes.GetNamedItem("url").InnerText;
 
                 return true;
             }

@@ -134,14 +134,33 @@ namespace TerminPlannerBOT.Commands
             if(_server.RemoveTermin(terminId))
             {
                 ServerHandler.SaveServer(_server);
-                ReplyAsync($"Deleted termin with id **{terminId}**");
+                ReplyAsync(embed: Program.BuildSimpleEmbed($"Deleted termin with id **{terminId}**"));
             }
             else
             {
-                ReplyAsync($"There is no termin with id **{terminId}**");
+                ReplyAsync(embed: Program.BuildSimpleEmbed($"There is no termin with id `{terminId}`"));
             }
             return Task.CompletedTask;
         }
 
+        [Command("reset")]
+        [Summary("<terminId>|resets the reactions of a termin")]
+        public Task ResetTermin(int terminId)
+        {
+            Termin termin;
+            if(_server.GetTermin(terminId, out termin))
+            {
+                termin.RemoveReactions();
+                termin.UpdateTerminQuery(_server, Context.Channel as SocketTextChannel);
+                ServerHandler.SaveServer(_server);
+                ReplyAsync(embed: Program.BuildSimpleEmbed($"Reset termin with id **{terminId}**"));
+            }
+            else
+            {
+                ReplyAsync(embed: Program.BuildSimpleEmbed($"There is no termin with id `{terminId}`"));
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }
